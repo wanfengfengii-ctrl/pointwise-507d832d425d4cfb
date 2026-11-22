@@ -1,0 +1,14 @@
+{
+  "day": "2026-06-18",
+  "branch": 1,
+  "stations": ["北闸", "南闸"],
+  "batches": [
+    [{"day":"2026-06-18","station":"北闸","key":"A","before":"absent","after":7},
+     {"day":"2026-06-18","station":"南闸","key":"B","before":"absent","after":5}],
+    [{"day":"2026-06-18","station":"北闸","key":"A","before":7,"after":11}],
+    [{"day":"2026-06-18","station":"南闸","key":"B","before":5,"after":13}],
+    [{"day":"2026-06-18","station":"南闸","key":"B","before":13,"after":17},
+     {"day":"2026-06-18","station":"北闸","key":"A","before":11,"after":19}],
+    [{"day":"2026-06-18","station":"南闸","key":"B","before":17,"after":23}]
+  ]
+}

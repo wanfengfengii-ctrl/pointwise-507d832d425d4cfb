@@ -1,0 +1,14 @@
+{
+  "day": "2026-06-18",
+  "opening": [
+    {"station": "北闸", "key": "B", "before": "absent", "after": 11},
+    {"station": "北闸", "key": "C", "before": "absent", "after": null},
+    {"station": "北闸", "key": "A", "before": "absent", "after": 7}
+  ],
+  "old_corrections": [
+    {"station": "北闸", "key": "A", "before": 7, "after": 11},
+    {"station": "北闸", "key": "B", "before": 11, "after": 13}
+  ],
+  "late_correction": {"station": "北闸", "key": "A", "before": 11, "after": 19},
+  "restored_correction": {"station": "北闸", "key": "A", "before": 7, "after": 17}
+}
