@@ -1,7 +1,7 @@
 import json
 
 from warehouse.report.archive import initialize_report_archive
-from warehouse.replica.requests import initialize_intake_requests
+from warehouse.replica.requests import initialize_intake_requests, initialize_scoped_requests
 from warehouse.source.store import atomic, connect_store, json_text
 from warehouse.source.validation import Conflict, observation_key
 
@@ -23,6 +23,10 @@ REPLICA_SCHEMA = (
         branch INTEGER NOT NULL, number INTEGER NOT NULL, report_id TEXT NOT NULL,
         PRIMARY KEY (branch, number), FOREIGN KEY (report_id) REFERENCES replica_publications (report_id)
     )''',
+    '''CREATE TABLE IF NOT EXISTS replica_scoped (
+        singleton INTEGER PRIMARY KEY CHECK (singleton = 1), day TEXT NOT NULL,
+        branch INTEGER NOT NULL, stations TEXT NOT NULL, expanded INTEGER NOT NULL
+    )''',
 )
 
 
@@ -34,6 +38,7 @@ def open_replica(path):
             for statement in REPLICA_SCHEMA:
                 replica.execute(statement)
             initialize_intake_requests(replica)
+            initialize_scoped_requests(replica)
             initialize_report_archive(replica)
             replica.execute('INSERT OR IGNORE INTO replica_current VALUES (1, 1, 0, NULL)')
     except BaseException:
@@ -89,3 +94,21 @@ def record_publication(replica, package, report_id):
 
 def count_publications(replica):
     return replica.execute('SELECT COUNT(*) FROM replica_publications').fetchone()[0]
+
+
+def read_scoped_state(replica):
+    row = replica.execute('SELECT * FROM replica_scoped WHERE singleton = 1').fetchone()
+    if row is None:
+        return None
+    return {'day': row['day'], 'branch': row['branch'], 'stations': json.loads(row['stations']),
+            'expanded': bool(row['expanded'])}
+
+
+def begin_scoped_state(replica, day, branch, stations):
+    replica.execute('INSERT INTO replica_scoped VALUES (1, ?, ?, ?, 0)', (day, branch, json_text(stations)))
+    replica.execute('UPDATE replica_current SET branch = ? WHERE singleton = 1', (branch,))
+
+
+def update_scoped_state(replica, stations, expanded):
+    replica.execute('UPDATE replica_scoped SET stations = ?, expanded = ? WHERE singleton = 1',
+                    (json_text(stations), 1 if expanded else 0))

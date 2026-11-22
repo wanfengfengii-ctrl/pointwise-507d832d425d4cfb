@@ -2,7 +2,7 @@ import sqlite3
 from contextlib import closing
 
 from warehouse.recovery.workspace import open_active_workspace
-from warehouse.replica.progress import read_progress, read_replica_facts
+from warehouse.replica.progress import read_progress, read_replica_facts, read_scoped_state
 from warehouse.report.archive import open_source_archive, read_fixed_report, save_fixed_report
 from warehouse.report.daily import build_daily_report
 from warehouse.source.batches import read_source_boundary
@@ -43,6 +43,9 @@ def _lookup_replica(replica, day, freeze):
         report = build_daily_report(read_replica_facts(replica, day), day, progress['boundary'],
                                     report_id=report_id,
                                     intake_receipt=None if published is None else published['intake_receipt'])
+        scoped = read_scoped_state(replica)
+        if scoped is not None:
+            report['covered_stations'] = list(scoped['stations'])
         if freeze:
             save_fixed_report(replica, report)
         return report

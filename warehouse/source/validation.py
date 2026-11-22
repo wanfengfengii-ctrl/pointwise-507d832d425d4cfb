@@ -40,6 +40,15 @@ def require_position(value, label, *, minimum=0):
     return value
 
 
+def require_station_set(value):
+    if not isinstance(value, (list, tuple)) or not value:
+        raise WarehouseError('stations requires a nonempty list or tuple of names')
+    stations = [require_name(station, 'station') for station in value]
+    if len(set(stations)) != len(stations):
+        raise WarehouseError('stations requires distinct names')
+    return sorted(stations)
+
+
 def require_fields(value, fields, label):
     if not isinstance(value, dict) or value.keys() != set(fields):
         raise WarehouseError(f'{label} requires fields {", ".join(sorted(fields))}')

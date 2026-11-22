@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from warehouse.export.packages import encode_package
+from warehouse.export.packages import encode_package, encode_scoped_package
 from warehouse.source.store import connect_store, json_text
 from warehouse.source.validation import Conflict
 
@@ -46,6 +46,19 @@ def record_pending_issue(registry, issue_id, specification, missing):
 
 def seal_issue(registry, issue_id, package):
     encoded = encode_package(package)
+    previous = find_issue(registry, issue_id)
+    if previous is None or package.declaration['issue_id'] != issue_id:
+        raise Conflict('sealing requires the original issue request')
+    if previous['status'] == 'sealed':
+        if previous['package'] != encoded:
+            raise Conflict('issue material is already sealed')
+        return previous
+    registry.execute('UPDATE issues SET sealed = ?, missing = ? WHERE issue_id = ?', (encoded, '[]', issue_id))
+    return find_issue(registry, issue_id)
+
+
+def seal_scoped_issue(registry, issue_id, package):
+    encoded = encode_scoped_package(package)
     previous = find_issue(registry, issue_id)
     if previous is None or package.declaration['issue_id'] != issue_id:
         raise Conflict('sealing requires the original issue request')

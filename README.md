@@ -31,12 +31,18 @@ python3 -B demo.py
 | I4 封存供数 | `warehouse.export.issues.issue_delivery(root, issue_id, day=day, branch=branch, after=start, through=end, restore_id=None)` | `pending` 附缺项或 `sealed` 附 `package` 字节；`read_issue_result(root, issue_id)` 可按号查结果 |
 | I5 离线接收 | `warehouse.replica.intake.receive_delivery(replica, request_id, encoded)` | `pending` 附缺项和旧边界，或 `published` 附成功回执、新边界和固定成果号；`read_receipt(replica, request_id)` 查询成功结果 |
 | I6 日账与固定成果 | `warehouse.report.lookup.lookup_daily(store, day, freeze=False)`、`lookup_fixed_report(store, report_id)` | 有序原行、逐行出处、分站小计、全日升数、缺测数、边界及有则返回的接收原执 |
+| I7 按站封存 | `warehouse.export.issues.issue_scoped_delivery(root, issue_id, day=day, branch=branch, stations=stations, after=start, through=end, mode=mode)` | 结果字段同 I4。`mode` 为 `advance`（交付 `(after, through]`）或 `opening`（交付站集在 `through` 的开账依据） |
+| I8 按站接收 | `warehouse.replica.intake.receive_scoped_delivery(replica, request_id, day=day, branch=branch, stations=stations, through=end, parts=(), on_stage=None)` | `pending` 附缺件键和旧边界，或 `published` 附成功回执、新边界和固定成果号；按站成果另含升序 `covered_stations` |
 
 `root` 为中心工作目录。`store` 传工作目录读取白班账，传 `warehouse.replica.progress.open_replica(path)` 返回的连接读取夜班账。`lookup_daily` 可封存指定日，副仓当前发布已有该日固定成果时直接返回该成果。进度使用 `read_progress(replica)` 查询。源回执既可用 `find_source_receipt(source, request_id, branch)` 查，也可用 `read_batch_receipt(source, branch, number)` 查。源请求以分支和请求号为作用域。恢复、发行和接收请求分别在各自控制库、发行档案和副仓内独立登记。
 
 供数范围为 `(after, through]`，批次顺序和闭合终点随包冻结。普通包至少含一批。恢复包的 `after` 等于正式备份边界，恢复后尚未入新批时可以在该点接班。包的 JSON 包含版本、声明、批次和可选起账截面。`warehouse.export.packages.decode_package` 校验正式范围、原执和包内摘要，`encode_package` 可重编码。材料在中心受信渠道交换，摘要用于内容和截点一致性核对。同一声明可以分次抵达，已收到的相容批次和截面可持久保存。声明改变、跨分支混件、前像冲突或过期交付引发 `Conflict`。已完成的原请求可复领原回执。未知固定成果或不可恢复的备份引发 `NotFound`，无效输入引发 `WarehouseError`。
 
 副仓收到新分支普通件可以等待接班及前序到达。接班证据齐备后按冻结截面起账，再按新分支正式顺序应用更正。提交把完整事实、固定成果、当前指针、边界和成功回执放在同一事务中。`receive_delivery` 支持可选同步 `on_stage` 回调，分别在新发布写入后提交前、提交后返回前通知 `before_commit` 与 `after_commit`。回调异常直接传出，前者回滚发布并保留已登记材料，后者保留成功终局。回调可用独立读连接观察当前账。
+
+## 按站发行与扩站
+
+按站包的外层为 `version`（整数 2）、`declaration` 和 `pieces`，声明携带材料键到内容摘要的 `sha256` 映射，拆件只从 `pieces` 取子集。`advance` 的材料键是正式批号的十进制字符串，正文为 `{"rows": [...]}`，每项含批内行号 `row`、原输入行 `change` 和正式源原执 `source_receipt`，空数组证明该批无本日授权行。`opening` 的材料键是站名，正文为 `{"station": 站名, "facts": [...]}`，列出该站在截止批的全部现存观测事实（含原分支出处），空数组即该站当日确无观测的完整覆盖声明。按站副仓固定观测日与供数分支，空库从批 0 接收首个 `advance`，之后可原站集推进或在原截点、其后严格扩站一次；扩站联合提交旧站尾段与新增站开账，覆盖站集、边界、日账和回执同一事务落库。
 
 ## 正常业务回归
 
